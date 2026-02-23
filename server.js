@@ -1,3 +1,4 @@
+// === КОД СЕРВЕРА (server.js) ===
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -13,9 +14,13 @@ let rooms = {};
 io.on('connection', (socket) => {
     console.log('Гравець підключився:', socket.id);
 
+    // Створення кімнати (ТЕПЕР ІЗ ВИБОРОМ ОЧОК)
     socket.on('createRoom', (data) => {
         const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
-        rooms[roomCode] = { p1: { id: socket.id, name: data.name } };
+        rooms[roomCode] = { 
+            p1: { id: socket.id, name: data.name },
+            targetScore: data.targetScore || 10000 // Зберігаємо цільові очки
+        };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
     });
@@ -25,7 +30,13 @@ io.on('connection', (socket) => {
         if (room && !room.p2) {
             room.p2 = { id: socket.id, name: data.name };
             socket.join(data.roomCode);
-            io.to(data.roomCode).emit('gameStarted', { roomCode: data.roomCode, p1: room.p1, p2: room.p2 });
+            // Відправляємо обом інформацію про старт І кількість очок
+            io.to(data.roomCode).emit('gameStarted', { 
+                roomCode: data.roomCode, 
+                p1: room.p1, 
+                p2: room.p2,
+                targetScore: room.targetScore
+            });
         } else {
             socket.emit('errorMsg', 'Кімнату не знайдено або вона вже повна!');
         }
